@@ -10,7 +10,7 @@ import io.github.zm.auth_core.request.AuthorizationUrlBuilder
 import io.github.zm.auth_core.result.AuthResult
 import io.github.zm.auth_core.result.TokenResult
 import io.github.zm.auth_core.session.SessionManager
-import io.github.zm.auth_core.state.DefaultStateGenerator
+import io.github.zm.auth_core.state.StateGenerator
 import io.github.zm.auth_core.storage.TokenStorage
 import io.github.zm.auth_core.token.TokenExchangeRequest
 import io.github.zm.auth_core.token.TokenExchanger
@@ -21,7 +21,7 @@ internal class DefaultAuthClient(
     private val discoveryManager: DiscoveryManager,
     private val sessionManager: SessionManager,
     private val pkceGenerator: PkceGenerator,
-    private val stateGenerator: DefaultStateGenerator,
+    private val stateGenerator: StateGenerator,
     private val authorizationUrlBuilder: AuthorizationUrlBuilder,
     private val browserLauncher: BrowserLauncher,
     private val redirectHandler: RedirectHandler,
@@ -72,6 +72,7 @@ internal class DefaultAuthClient(
             val isStateValid = sessionManager.validateState(params.state)
 
             if (!isStateValid) {
+                sessionManager.clear()
                 return AuthResult.Failure(
                     AuthError.StateMismatch
                 )
