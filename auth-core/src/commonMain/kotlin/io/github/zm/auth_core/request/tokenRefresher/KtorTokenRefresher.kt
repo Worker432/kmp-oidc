@@ -1,5 +1,6 @@
-package io.github.zm.auth_core.request.TokenRefresher
+package io.github.zm.auth_core.request.tokenRefresher
 
+import io.github.zm.auth_core.request.util.toTokenSet
 import io.github.zm.auth_core.token.TokenResponse
 import io.github.zm.auth_core.token.TokenSet
 import io.ktor.client.HttpClient
@@ -18,23 +19,17 @@ internal class KtorTokenRefresher(
     ): TokenSet {
         val response = httpClient.submitForm(
             url = request.tokenEndpoint,
-            formParameters = Parameters.Companion.build {
+            formParameters = Parameters.build {
                 append("grant_type", "refresh_token")
                 append("client_id", request.clientId)
                 append("refresh_token", request.refreshToken)
+
+                request.extraParams.forEach { (key, value) ->
+                    append(key, value)
+                }
             }
         ).body<TokenResponse>()
 
         return response.toTokenSet()
-    }
-
-    private fun TokenResponse.toTokenSet(): TokenSet {
-        return TokenSet(
-            accessToken = accessToken,
-            refreshToken = refreshToken,
-            idToken = idToken,
-            tokenType = tokenType,
-            expiresAt = Clock.System.now() + expiresIn.seconds
-        )
     }
 }

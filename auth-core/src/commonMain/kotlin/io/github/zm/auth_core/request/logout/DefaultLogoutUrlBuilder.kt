@@ -13,10 +13,12 @@ internal class DefaultLogoutUrlBuilder : LogoutUrlBuilder {
         val endpoint = discovery.endSessionEndpoint
             ?: throw IllegalStateException("Logout is not supported by provider")
 
-        val queryParams = mapOf(
-            "client_id" to config.clientId,
-            "post_logout_redirect_uri" to config.logoutRedirectUri
-        )
+        val queryParams = buildMap {
+            put("client_id", config.clientId)
+            put("post_logout_redirect_uri", config.logoutRedirectUri)
+
+            putAll(config.customization.logoutParameters)
+        }
 
         val query = queryParams
             .map { (key, value) ->

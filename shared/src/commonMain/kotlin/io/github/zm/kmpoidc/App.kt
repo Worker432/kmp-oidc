@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import io.github.zm.auth_core.AuthClientFactory
 import io.github.zm.auth_core.config.AuthConfig
+import io.github.zm.auth_core.config.IdpPreset
 import io.github.zm.auth_core.platform.PlatformDependencies
 import io.github.zm.auth_core.request.logout.LogoutMode
 import kotlinx.coroutines.launch
@@ -29,7 +30,8 @@ fun App(
                 redirectUri = "io.github.zm.kmpoidc://callback",
                 logoutRedirectUri = "io.github.zm.kmpoidc://logout",
                 scopes = listOf("openid", "profile", "email", "offline_access"),
-                storageName = "sample_auth_tokens"
+                storageName = "sample_auth_tokens",
+                preset = IdpPreset.Keycloak
             ),
             dependencies = dependencies
         )

@@ -13,7 +13,7 @@ import io.github.zm.auth_core.state.DefaultStateGenerator
 import io.github.zm.auth_core.storage.PlatformTokenStorageFactory
 import io.github.zm.auth_core.token.DefaultTokenManager
 import io.github.zm.auth_core.request.tokenExchanger.KtorTokenExchanger
-import io.github.zm.auth_core.request.TokenRefresher.KtorTokenRefresher
+import io.github.zm.auth_core.request.tokenRefresher.KtorTokenRefresher
 import io.github.zm.auth_core.request.logout.DefaultLogoutUrlBuilder
 
 object AuthClientFactory {

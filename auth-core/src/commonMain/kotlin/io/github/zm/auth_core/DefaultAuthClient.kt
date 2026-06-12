@@ -85,13 +85,13 @@ internal class DefaultAuthClient(
             val discovery = discoveryManager.getDiscovery()
 
             val tokenSet = tokenExchanger.exchangeCode(
-
                 TokenExchangeRequest(
                     tokenEndpoint = discovery.tokenEndpoint,
                     clientId = config.clientId,
                     redirectUri = config.redirectUri,
                     code = params.code,
-                    codeVerifier = session.codeVerifier
+                    codeVerifier = session.codeVerifier,
+                    extraParams = config.customization.tokenParameters
                 )
             )
 

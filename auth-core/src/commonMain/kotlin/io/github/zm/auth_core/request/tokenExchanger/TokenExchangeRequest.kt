@@ -5,5 +5,6 @@ data class TokenExchangeRequest(
     val clientId: String,
     val redirectUri: String,
     val code: String,
-    val codeVerifier: String
+    val codeVerifier: String,
+    val extraParams: Map<String, String> = emptyMap()
 )

@@ -1,4 +1,4 @@
-package io.github.zm.auth_core.request.TokenRefresher
+package io.github.zm.auth_core.request.tokenRefresher
 
 import io.github.zm.auth_core.token.TokenSet
 

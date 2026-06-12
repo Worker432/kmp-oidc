@@ -12,15 +12,17 @@ internal class DefaultAuthorizationUrlBuilder : AuthorizationUrlBuilder {
         state: String,
         codeChallenge: String
     ): String {
-        val queryParams = mapOf(
-            "response_type" to "code",
-            "client_id" to config.clientId,
-            "redirect_uri" to config.redirectUri,
-            "scope" to config.scopes.joinToString(" "),
-            "state" to state,
-            "code_challenge" to codeChallenge,
-            "code_challenge_method" to "S256"
-        )
+        val queryParams = buildMap {
+            put("response_type", "code")
+            put("client_id", config.clientId)
+            put("redirect_uri", config.redirectUri)
+            put("scope", config.scopes.joinToString(" "))
+            put("state", state)
+            put("code_challenge", codeChallenge)
+            put("code_challenge_method", "S256")
+
+            putAll(config.customization.authorizationParameters)
+        }
 
         val query = queryParams
             .map { (key, value) ->

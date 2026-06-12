@@ -1,6 +1,6 @@
 package io.github.zm.auth_core.request.util
 
-fun String.urlEncode(): String {
+internal fun String.urlEncode(): String {
     return encodeToByteArray()
         .joinToString("") { byte ->
             val char = byte.toInt().toChar()
