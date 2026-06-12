@@ -53,6 +53,7 @@ kotlin {
         androidMain {
             dependencies {
                 implementation(libs.ktor.client.okhttp)
+                implementation(libs.androidx.security.crypto)
             }
         }
 

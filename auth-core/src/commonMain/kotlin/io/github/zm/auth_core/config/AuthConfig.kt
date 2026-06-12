@@ -9,5 +9,6 @@ data class AuthConfig(
         "openid",
         "profile",
         "email"
-    )
+    ),
+    val storageName: String = "auth_tokens"
 )
