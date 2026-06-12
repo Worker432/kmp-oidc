@@ -21,6 +21,8 @@ datetime = "0.8.0"
 kotlinx-serialization = "1.11.0"
 io-ktor = "3.0.3"
 security-crypto = "1.1.0"
+androidx-browser = "1.10.0"
+
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
@@ -51,6 +53,7 @@ ktor-client-content-negotiation = { group = "io.ktor", name = "ktor-client-conte
 ktor-serialization-kotlinx-json = { group = "io.ktor", name = "ktor-serialization-kotlinx-json", version.ref = "io-ktor" }
 ktor-client-core = { group = "io.ktor", name = "ktor-client-core", version.ref = "io-ktor" }
 ktor-client-okhttp = { group = "io.ktor", name = "ktor-client-okhttp", version.ref = "io-ktor" }
+androidx-browser = { module = "androidx.browser:browser", version.ref = "androidx-browser" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
