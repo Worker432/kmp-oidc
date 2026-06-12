@@ -1,4 +1,4 @@
-package io.github.zm.auth_core.token
+package io.github.zm.auth_core.request.tokenExchanger
 
 data class TokenExchangeRequest(
     val tokenEndpoint: String,

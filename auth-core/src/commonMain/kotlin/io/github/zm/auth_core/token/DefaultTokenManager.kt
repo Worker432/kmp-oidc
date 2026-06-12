@@ -3,6 +3,8 @@ package io.github.zm.auth_core.token
 import kotlin.time.Clock
 import io.github.zm.auth_core.config.AuthConfig
 import io.github.zm.auth_core.discovery.DiscoveryManager
+import io.github.zm.auth_core.request.TokenRefresher.TokenRefreshRequest
+import io.github.zm.auth_core.request.TokenRefresher.TokenRefresher
 import io.github.zm.auth_core.result.TokenResult
 import io.github.zm.auth_core.storage.TokenStorage
 

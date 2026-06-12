@@ -7,13 +7,14 @@ import io.github.zm.auth_core.network.HttpClientFactory
 import io.github.zm.auth_core.pkce.DefaultPkceGenerator
 import io.github.zm.auth_core.platform.PlatformDependencies
 import io.github.zm.auth_core.redirect.DefaultRedirectHandler
-import io.github.zm.auth_core.request.DefaultAuthorizationUrlBuilder
+import io.github.zm.auth_core.request.authorization.DefaultAuthorizationUrlBuilder
 import io.github.zm.auth_core.session.DefaultSessionManager
 import io.github.zm.auth_core.state.DefaultStateGenerator
 import io.github.zm.auth_core.storage.PlatformTokenStorageFactory
 import io.github.zm.auth_core.token.DefaultTokenManager
-import io.github.zm.auth_core.token.KtorTokenExchanger
-import io.github.zm.auth_core.token.KtorTokenRefresher
+import io.github.zm.auth_core.request.tokenExchanger.KtorTokenExchanger
+import io.github.zm.auth_core.request.TokenRefresher.KtorTokenRefresher
+import io.github.zm.auth_core.request.logout.DefaultLogoutUrlBuilder
 
 object AuthClientFactory {
     fun create(
@@ -50,6 +51,7 @@ object AuthClientFactory {
             stateGenerator = DefaultStateGenerator(),
             pkceGenerator = DefaultPkceGenerator(),
             authorizationUrlBuilder = DefaultAuthorizationUrlBuilder(),
+            logoutUrlBuilder = DefaultLogoutUrlBuilder(),
             browserLauncher = PlatformBrowserLauncherFactory.create(dependencies),
             redirectHandler = DefaultRedirectHandler(),
             tokenExchanger = KtorTokenExchanger(httpClient),

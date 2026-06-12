@@ -1,4 +1,4 @@
-package io.github.zm.auth_core.token
+package io.github.zm.auth_core.request.TokenRefresher
 
 data class TokenRefreshRequest(
     val tokenEndpoint: String,

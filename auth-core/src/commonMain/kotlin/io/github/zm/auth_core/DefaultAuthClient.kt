@@ -4,16 +4,18 @@ import io.github.zm.auth_core.browser.BrowserLauncher
 import io.github.zm.auth_core.config.AuthConfig
 import io.github.zm.auth_core.discovery.DiscoveryManager
 import io.github.zm.auth_core.error.AuthError
+import io.github.zm.auth_core.request.logout.LogoutMode
 import io.github.zm.auth_core.pkce.PkceGenerator
 import io.github.zm.auth_core.redirect.RedirectHandler
-import io.github.zm.auth_core.request.AuthorizationUrlBuilder
+import io.github.zm.auth_core.request.authorization.AuthorizationUrlBuilder
+import io.github.zm.auth_core.request.logout.LogoutUrlBuilder
 import io.github.zm.auth_core.result.AuthResult
 import io.github.zm.auth_core.result.TokenResult
 import io.github.zm.auth_core.session.SessionManager
 import io.github.zm.auth_core.state.StateGenerator
 import io.github.zm.auth_core.storage.TokenStorage
-import io.github.zm.auth_core.token.TokenExchangeRequest
-import io.github.zm.auth_core.token.TokenExchanger
+import io.github.zm.auth_core.request.tokenExchanger.TokenExchangeRequest
+import io.github.zm.auth_core.request.tokenExchanger.TokenExchanger
 import io.github.zm.auth_core.token.TokenManager
 
 internal class DefaultAuthClient(
@@ -23,6 +25,7 @@ internal class DefaultAuthClient(
     private val pkceGenerator: PkceGenerator,
     private val stateGenerator: StateGenerator,
     private val authorizationUrlBuilder: AuthorizationUrlBuilder,
+    private val logoutUrlBuilder: LogoutUrlBuilder,
     private val browserLauncher: BrowserLauncher,
     private val redirectHandler: RedirectHandler,
     private val tokenExchanger: TokenExchanger,
@@ -106,8 +109,31 @@ internal class DefaultAuthClient(
         return tokenManager.getValidAccessToken()
     }
 
-    override suspend fun logout() {
+    override suspend fun logout(
+        mode: LogoutMode
+    ): AuthResult {
         tokenStorage.clear()
         sessionManager.clear()
+
+        if (mode == LogoutMode.LOCAL_ONLY) {
+            return AuthResult.Success
+        }
+
+        return try {
+            val discovery = discoveryManager.getDiscovery()
+
+            val logoutUrl = logoutUrlBuilder.buildLogoutUrl(
+                config = config,
+                discovery = discovery
+            )
+
+            browserLauncher.open(logoutUrl)
+
+            AuthResult.Success
+        } catch (_: IllegalStateException) {
+            AuthResult.Failure(AuthError.LogoutNotSupported)
+        } catch (_: Throwable) {
+            AuthResult.Failure(AuthError.LogoutFailed)
+        }
     }
 }

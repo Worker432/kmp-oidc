@@ -13,4 +13,6 @@ sealed interface AuthError {
     data object BrowserLaunchFailed : AuthError
     data object RedirectInvalid : AuthError
     data object TokenStorageFailed : AuthError
+    data object LogoutNotSupported : AuthError
+    data object LogoutFailed : AuthError
 }

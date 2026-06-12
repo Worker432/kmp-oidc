@@ -1,7 +1,8 @@
-package io.github.zm.auth_core.request
+package io.github.zm.auth_core.request.authorization
 
 import io.github.zm.auth_core.config.AuthConfig
 import io.github.zm.auth_core.discovery.DiscoveryDocument
+import io.github.zm.auth_core.request.util.urlEncode
 
 internal class DefaultAuthorizationUrlBuilder : AuthorizationUrlBuilder {
 
@@ -28,18 +29,5 @@ internal class DefaultAuthorizationUrlBuilder : AuthorizationUrlBuilder {
             .joinToString("&")
 
         return "${discovery.authorizationEndpoint}?$query"
-    }
-
-    private fun String.urlEncode(): String {
-        return encodeToByteArray()
-            .joinToString("") { byte ->
-                val char = byte.toInt().toChar()
-
-                when {
-                    char.isLetterOrDigit() -> char.toString()
-                    char in listOf('-', '_', '.', '~') -> char.toString()
-                    else -> "%${byte.toUByte().toString(16).uppercase().padStart(2, '0')}"
-                }
-            }
     }
 }

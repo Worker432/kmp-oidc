@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import io.github.zm.auth_core.AuthClientFactory
 import io.github.zm.auth_core.config.AuthConfig
 import io.github.zm.auth_core.platform.PlatformDependencies
+import io.github.zm.auth_core.request.logout.LogoutMode
 import kotlinx.coroutines.launch
 
 @Composable
@@ -26,6 +27,7 @@ fun App(
                 issuer = "http://10.0.2.2:8080/realms/kmp",
                 clientId = "kmp-oidc-sdk",
                 redirectUri = "io.github.zm.kmpoidc://callback",
+                logoutRedirectUri = "io.github.zm.kmpoidc://logout",
                 scopes = listOf("openid", "profile", "email", "offline_access"),
                 storageName = "sample_auth_tokens"
             ),
@@ -37,8 +39,20 @@ fun App(
     var status by remember { mutableStateOf("Idle") }
 
     LaunchedEffect(redirectUrl) {
-        if (redirectUrl != null) {
-            status = authClient.handleRedirect(redirectUrl).toString()
+        val url = redirectUrl ?: return@LaunchedEffect
+
+        when {
+            url.startsWith("io.github.zm.kmpoidc://callback") -> {
+                status = authClient.handleRedirect(url).toString()
+            }
+
+            url.startsWith("io.github.zm.kmpoidc://logout") -> {
+                status = "Logged out from provider"
+            }
+
+            else -> {
+                "Invalid redirect: $url"
+            }
         }
     }
 
@@ -75,12 +89,25 @@ fun App(
             Button(
                 onClick = {
                     scope.launch {
-                        authClient.logout()
-                        status = "Logged out"
+                        status = authClient.logout(
+                            mode = LogoutMode.LOCAL_ONLY
+                        ).toString()
                     }
                 }
             ) {
-                Text("Logout")
+                Text("Logout local")
+            }
+
+            Button(
+                onClick = {
+                    scope.launch {
+                        status = authClient.logout(
+                            mode = LogoutMode.LOCAL_AND_PROVIDER
+                        ).toString()
+                    }
+                }
+            ) {
+                Text("Logout provider")
             }
 
             Text("Status: $status")
