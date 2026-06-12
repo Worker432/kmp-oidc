@@ -13,6 +13,7 @@ kotlin {
 }
 dependencies {
     implementation(projects.shared)
+    implementation(project(":auth-core"))
 
     implementation(libs.androidx.activity.compose)
 

@@ -1,11 +1,8 @@
 package io.github.zm.kmpoidc
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -13,17 +10,39 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import org.jetbrains.compose.resources.painterResource
-
-import kmpoidc.shared.generated.resources.Res
-import kmpoidc.shared.generated.resources.compose_multiplatform
+import io.github.zm.auth_core.AuthClientFactory
+import io.github.zm.auth_core.config.AuthConfig
+import io.github.zm.auth_core.platform.PlatformDependencies
+import kotlinx.coroutines.launch
 
 @Composable
-@Preview
-fun App() {
+fun App(
+    dependencies: PlatformDependencies,
+    redirectUrl: String? = null
+) {
+    val authClient = remember {
+        AuthClientFactory.create(
+            config = AuthConfig(
+                issuer = "http://10.0.2.2:8080/realms/kmp",
+                clientId = "kmp-oidc-sdk",
+                redirectUri = "io.github.zm.kmpoidc://callback",
+                scopes = listOf("openid", "profile", "email", "offline_access"),
+                storageName = "sample_auth_tokens"
+            ),
+            dependencies = dependencies
+        )
+    }
+
+    val scope = rememberCoroutineScope()
+    var status by remember { mutableStateOf("Idle") }
+
+    LaunchedEffect(redirectUrl) {
+        if (redirectUrl != null) {
+            status = authClient.handleRedirect(redirectUrl).toString()
+        }
+    }
+
     MaterialTheme {
-        var showContent by remember { mutableStateOf(false) }
         Column(
             modifier = Modifier
                 .background(MaterialTheme.colorScheme.primaryContainer)
@@ -31,19 +50,40 @@ fun App() {
                 .fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Button(onClick = { showContent = !showContent }) {
-                Text("Click me!")
-            }
-            AnimatedVisibility(showContent) {
-                val greeting = remember { Greeting().greet() }
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Image(painterResource(Res.drawable.compose_multiplatform), null)
-                    Text("Compose: $greeting")
+            Text("KMP OIDC Sample")
+
+            Button(
+                onClick = {
+                    scope.launch {
+                        status = authClient.login().toString()
+                    }
                 }
+            ) {
+                Text("Login")
             }
+
+            Button(
+                onClick = {
+                    scope.launch {
+                        status = authClient.getValidAccessToken().toString()
+                    }
+                }
+            ) {
+                Text("Get valid access token")
+            }
+
+            Button(
+                onClick = {
+                    scope.launch {
+                        authClient.logout()
+                        status = "Logged out"
+                    }
+                }
+            ) {
+                Text("Logout")
+            }
+
+            Text("Status: $status")
         }
     }
 }
