@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.kotlin.serialization)
+    id("maven-publish")
 }
 
 kotlin {
@@ -61,9 +62,21 @@ kotlin {
 
         iosMain {
             dependencies {
-
             }
         }
     }
+}
 
+group = providers.gradleProperty("GROUP").get()
+version = providers.gradleProperty("VERSION_NAME").get()
+
+publishing {
+    publications.withType<MavenPublication>().configureEach {
+        val baseArtifactId = providers.gradleProperty("POM_ARTIFACT_ID").get()
+        artifactId = when (name) {
+            "kotlinMultiplatform" -> baseArtifactId
+            "android" -> "${baseArtifactId}-android"
+            else -> "${baseArtifactId}-${name}"
+        }
+    }
 }
