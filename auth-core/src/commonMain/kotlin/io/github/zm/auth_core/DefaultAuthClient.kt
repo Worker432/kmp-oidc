@@ -55,8 +55,9 @@ internal class DefaultAuthClient(
 
             AuthResult.Started
 
-        } catch (_: Throwable) {
-            AuthResult.Failure(AuthError.Unknown())
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            AuthResult.Failure(AuthError.Unknown(e.message))
         }
     }
 
@@ -95,8 +96,9 @@ internal class DefaultAuthClient(
             sessionManager.clear()
             AuthResult.Success
 
-        } catch (_: Throwable) {
-            AuthResult.Failure(AuthError.Unknown())
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            AuthResult.Failure(AuthError.Unknown(e.message))
         }
     }
 
