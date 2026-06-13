@@ -4,6 +4,6 @@ import io.github.zm.auth_core.platform.PlatformDependencies
 
 internal actual object PlatformBrowserLauncherFactory {
     actual fun create(dependencies: PlatformDependencies): BrowserLauncher {
-        TODO("Not yet implemented")
+        return IosBrowserLauncher()
     }
 }

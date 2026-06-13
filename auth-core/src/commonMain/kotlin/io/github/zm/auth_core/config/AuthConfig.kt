@@ -12,6 +12,5 @@ data class AuthConfig(
         "email"
     ),
     val storageName: String = "auth_tokens",
-    val preset: IdpPreset = IdpPreset.GenericOidc,
     val customization: IdpCustomization = IdpCustomization()
 )

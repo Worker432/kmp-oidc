@@ -7,6 +7,8 @@ internal actual object PlatformTokenStorageFactory {
         dependencies: PlatformDependencies,
         storageName: String
     ): TokenStorage {
-        TODO("Not yet implemented")
+        return IosKeychainTokenStorage(
+            storageName = storageName
+        )
     }
 }

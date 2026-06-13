@@ -25,13 +25,12 @@ fun App(
     val authClient = remember {
         AuthClientFactory.create(
             config = AuthConfig(
-                issuer = "http://10.0.2.2:8080/realms/kmp",
+                issuer = sampleIssuerUrl(),
                 clientId = "kmp-oidc-sdk",
                 redirectUri = "io.github.zm.kmpoidc://callback",
                 logoutRedirectUri = "io.github.zm.kmpoidc://logout",
                 scopes = listOf("openid", "profile", "email", "offline_access"),
                 storageName = "sample_auth_tokens",
-                preset = IdpPreset.Keycloak
             ),
             dependencies = dependencies
         )
@@ -53,7 +52,7 @@ fun App(
             }
 
             else -> {
-                "Invalid redirect: $url"
+                status = "Invalid redirect: $url"
             }
         }
     }

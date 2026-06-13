@@ -1,8 +1,8 @@
 package io.github.zm.auth_core.crypto
 
-import android.util.Base64
 import java.security.MessageDigest
 import java.security.SecureRandom
+import java.util.Base64
 
 internal actual object CryptoProvider {
     private val secureRandom = SecureRandom()
@@ -20,12 +20,8 @@ internal actual object CryptoProvider {
             .digest(bytes)
     }
 
-    actual fun base64UrlEncodeWithoutPadding(bytes: ByteArray): String {
-        return Base64.encodeToString(
-            bytes,
-            Base64.URL_SAFE or
-                    Base64.NO_PADDING or
-                    Base64.NO_WRAP
-        )
+    actual fun base64Encode(bytes: ByteArray): String {
+        return Base64.getEncoder()
+            .encodeToString(bytes)
     }
 }

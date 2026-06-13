@@ -1,14 +1,14 @@
 package io.github.zm.auth_core.state
 
 import io.github.zm.auth_core.crypto.CryptoProvider
+import io.github.zm.auth_core.crypto.base64UrlEncodeWithoutPadding
 
-class DefaultStateGenerator: StateGenerator {
+class DefaultStateGenerator : StateGenerator {
+
     override fun generateState(): String {
-        with(CryptoProvider) {
-            return base64UrlEncodeWithoutPadding(
-                secureRandomBytes(STATE_SIZE_BYTES)
-            )
-        }
+        return CryptoProvider
+            .secureRandomBytes(STATE_SIZE_BYTES)
+            .base64UrlEncodeWithoutPadding()
     }
 
     private companion object {

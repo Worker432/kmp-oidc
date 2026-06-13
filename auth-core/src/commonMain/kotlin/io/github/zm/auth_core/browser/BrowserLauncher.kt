@@ -1,7 +1,8 @@
 package io.github.zm.auth_core.browser
 
-interface BrowserLauncher {
+internal interface BrowserLauncher {
     suspend fun open(
-        url: String
-    )
+        url: String,
+        callbackScheme: String? = null
+    ): BrowserLaunchResult
 }

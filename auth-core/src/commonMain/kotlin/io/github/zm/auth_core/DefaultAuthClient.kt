@@ -1,5 +1,6 @@
 package io.github.zm.auth_core
 
+import io.github.zm.auth_core.browser.BrowserLaunchResult
 import io.github.zm.auth_core.browser.BrowserLauncher
 import io.github.zm.auth_core.config.AuthConfig
 import io.github.zm.auth_core.discovery.DiscoveryManager
@@ -16,6 +17,7 @@ import io.github.zm.auth_core.state.StateGenerator
 import io.github.zm.auth_core.storage.TokenStorage
 import io.github.zm.auth_core.request.tokenExchanger.TokenExchangeRequest
 import io.github.zm.auth_core.request.tokenExchanger.TokenExchanger
+import io.github.zm.auth_core.request.util.uriScheme
 import io.github.zm.auth_core.token.TokenManager
 
 internal class DefaultAuthClient(
@@ -54,9 +56,24 @@ internal class DefaultAuthClient(
                 state = state,
                 codeChallenge = codeChallenge
             )
-            browserLauncher.open(authorizationUrl)
+            when (
+                val browserResult = browserLauncher.open(
+                    url = authorizationUrl,
+                    callbackScheme = config.redirectUri.uriScheme()
+                )
+            ) {
+                BrowserLaunchResult.Opened -> {
+                    AuthResult.Started
+                }
 
-            AuthResult.Started
+                is BrowserLaunchResult.RedirectReceived -> {
+                    handleRedirect(browserResult.url)
+                }
+
+                BrowserLaunchResult.Cancelled -> {
+                    AuthResult.Failure(AuthError.UserCancelled)
+                }
+            }
 
         } catch (e: Throwable) {
             e.printStackTrace()
@@ -127,9 +144,22 @@ internal class DefaultAuthClient(
                 discovery = discovery
             )
 
-            browserLauncher.open(logoutUrl)
-
-            AuthResult.Success
+            when (
+                browserLauncher.open(
+                    url = logoutUrl,
+                    callbackScheme = config.logoutRedirectUri.uriScheme()
+                )
+            ) {
+                BrowserLaunchResult.Opened -> {
+                    AuthResult.Success
+                }
+                is BrowserLaunchResult.RedirectReceived -> {
+                    AuthResult.Success
+                }
+                BrowserLaunchResult.Cancelled -> {
+                    AuthResult.Failure(AuthError.UserCancelled)
+                }
+            }
         } catch (_: IllegalStateException) {
             AuthResult.Failure(AuthError.LogoutNotSupported)
         } catch (_: Throwable) {
