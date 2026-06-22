@@ -1,32 +1,39 @@
 package io.github.zm.auth_core.session
 
-class DefaultSessionManager: SessionManager {
+internal class DefaultSessionManager(
+    private val storage: AuthSessionStorage
+) : SessionManager {
     private var currentSession: AuthSession? = null
 
-    override fun createSession(
+    override suspend fun createSession(
         state: String,
         codeVerifier: String
     ): AuthSession {
-
         val session = AuthSession(
             state = state,
             codeVerifier = codeVerifier
         )
 
+        storage.save(session)
         currentSession = session
 
         return session
     }
 
-    override fun getCurrentSession(): AuthSession? {
-        return currentSession
+    override suspend fun getCurrentSession(): AuthSession? {
+        currentSession?.let { return it }
+
+        val restored = storage.read()
+        currentSession = restored
+        return restored
     }
 
-    override fun validateState(receivedState: String): Boolean {
-        return currentSession?.state == receivedState
+    override suspend fun validateState(receivedState: String): Boolean {
+        return getCurrentSession()?.state == receivedState
     }
 
-    override fun clear() {
+    override suspend fun clear() {
         currentSession = null
+        storage.clear()
     }
 }

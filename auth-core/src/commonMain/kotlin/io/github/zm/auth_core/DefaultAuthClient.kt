@@ -8,6 +8,7 @@ import io.github.zm.auth_core.error.AuthError
 import io.github.zm.auth_core.request.logout.LogoutMode
 import io.github.zm.auth_core.pkce.PkceGenerator
 import io.github.zm.auth_core.redirect.RedirectHandler
+import io.github.zm.auth_core.redirect.RedirectParams
 import io.github.zm.auth_core.request.authorization.AuthorizationUrlBuilder
 import io.github.zm.auth_core.request.logout.LogoutUrlBuilder
 import io.github.zm.auth_core.result.AuthResult
@@ -85,37 +86,66 @@ internal class DefaultAuthClient(
         return try {
             val params = redirectHandler.parse(url)
 
-            val session = sessionManager.getCurrentSession()
-                ?: return AuthResult.Failure(
-                    AuthError.MissingAuthSession
-                )
+            when (params) {
+                is RedirectParams.Error -> {
+                    val receivedState = params.state
+                    if (
+                        receivedState != null &&
+                        sessionManager.getCurrentSession() != null &&
+                        !sessionManager.validateState(receivedState)
+                    ) {
+                        sessionManager.clear()
+                        return AuthResult.Failure(AuthError.StateMismatch)
+                    }
 
-            val isStateValid = sessionManager.validateState(params.state)
+                    sessionManager.clear()
 
-            if (!isStateValid) {
-                sessionManager.clear()
-                return AuthResult.Failure(
-                    AuthError.StateMismatch
-                )
+                    return when (params.error) {
+                        "access_denied" -> AuthResult.AccessDenied
+                        else -> AuthResult.Failure(
+                            AuthError.AuthorizationFailed(
+                                error = params.error,
+                                description = params.errorDescription
+                            )
+                        )
+                    }
+                }
+
+                is RedirectParams.AuthorizationCode -> {
+                    val session = sessionManager.getCurrentSession()
+                        ?: return AuthResult.Failure(
+                            AuthError.MissingAuthSession
+                        )
+
+                    val isStateValid = sessionManager.validateState(params.state)
+
+                    if (!isStateValid) {
+                        sessionManager.clear()
+                        return AuthResult.Failure(
+                            AuthError.StateMismatch
+                        )
+                    }
+
+                    val discovery = discoveryManager.getDiscovery()
+
+                    val tokenSet = tokenExchanger.exchangeCode(
+                        TokenExchangeRequest(
+                            tokenEndpoint = discovery.tokenEndpoint,
+                            clientId = config.clientId,
+                            redirectUri = config.redirectUri,
+                            code = params.code,
+                            codeVerifier = session.codeVerifier,
+                            extraParams = config.customization.tokenParameters
+                        )
+                    )
+
+                    tokenStorage.save(tokenSet)
+                    sessionManager.clear()
+                    AuthResult.Success
+                }
             }
-
-            val discovery = discoveryManager.getDiscovery()
-
-            val tokenSet = tokenExchanger.exchangeCode(
-                TokenExchangeRequest(
-                    tokenEndpoint = discovery.tokenEndpoint,
-                    clientId = config.clientId,
-                    redirectUri = config.redirectUri,
-                    code = params.code,
-                    codeVerifier = session.codeVerifier,
-                    extraParams = config.customization.tokenParameters
-                )
-            )
-
-            tokenStorage.save(tokenSet)
-            sessionManager.clear()
-            AuthResult.Success
-
+        } catch (_: IllegalArgumentException) {
+            AuthResult.Failure(AuthError.RedirectInvalid)
         } catch (e: Throwable) {
             e.printStackTrace()
             AuthResult.Failure(AuthError.Unknown(e.message))

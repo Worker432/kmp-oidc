@@ -1,16 +1,16 @@
 package io.github.zm.auth_core.session
 
 interface SessionManager {
-    fun createSession(
+    suspend fun createSession(
         state: String,
         codeVerifier: String
     ): AuthSession
 
-    fun getCurrentSession(): AuthSession?
+    suspend fun getCurrentSession(): AuthSession?
 
-    fun validateState(
+    suspend fun validateState(
         receivedState: String
     ): Boolean
 
-    fun clear()
+    suspend fun clear()
 }

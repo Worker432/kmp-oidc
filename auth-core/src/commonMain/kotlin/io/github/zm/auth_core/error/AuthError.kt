@@ -9,6 +9,10 @@ sealed interface AuthError {
     data object DiscoveryLoadFailed : AuthError
     data object TokenExchangeFailed : AuthError
     data object RefreshFailed : AuthError
+    data class AuthorizationFailed(
+        val error: String,
+        val description: String? = null
+    ) : AuthError
     data class Unknown(val message: String? = null) : AuthError
     data object BrowserLaunchFailed : AuthError
     data object RedirectInvalid : AuthError

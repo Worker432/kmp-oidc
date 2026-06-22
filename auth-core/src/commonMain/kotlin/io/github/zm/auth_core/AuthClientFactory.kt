@@ -9,6 +9,7 @@ import io.github.zm.auth_core.platform.PlatformDependencies
 import io.github.zm.auth_core.redirect.DefaultRedirectHandler
 import io.github.zm.auth_core.request.authorization.DefaultAuthorizationUrlBuilder
 import io.github.zm.auth_core.session.DefaultSessionManager
+import io.github.zm.auth_core.session.PlatformAuthSessionStorageFactory
 import io.github.zm.auth_core.state.DefaultStateGenerator
 import io.github.zm.auth_core.storage.PlatformTokenStorageFactory
 import io.github.zm.auth_core.token.DefaultTokenManager
@@ -37,6 +38,11 @@ object AuthClientFactory {
             httpClient = httpClient
         )
 
+        val authSessionStorage = PlatformAuthSessionStorageFactory.create(
+            dependencies = dependencies,
+            storageName = "${config.storageName}_auth_session"
+        )
+
         val tokenManager = DefaultTokenManager(
             config = config,
             discoveryManager = discoveryManager,
@@ -47,7 +53,7 @@ object AuthClientFactory {
         return DefaultAuthClient(
             config = config,
             discoveryManager = discoveryManager,
-            sessionManager = DefaultSessionManager(),
+            sessionManager = DefaultSessionManager(authSessionStorage),
             stateGenerator = DefaultStateGenerator(),
             pkceGenerator = DefaultPkceGenerator(),
             authorizationUrlBuilder = DefaultAuthorizationUrlBuilder(),

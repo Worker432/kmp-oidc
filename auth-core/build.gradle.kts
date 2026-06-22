@@ -6,6 +6,10 @@ plugins {
 }
 
 kotlin {
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     android {
         namespace = "io.github.zm.auth_core"
         compileSdk {
@@ -48,6 +52,12 @@ kotlin {
                 implementation(libs.ktor.serialization.kotlinx.json)
                 implementation(libs.ktor.client.core)
                 implementation(libs.ktor.client.content.negotiation)
+            }
+        }
+
+        commonTest {
+            dependencies {
+                implementation(libs.kotlin.test)
             }
         }
 

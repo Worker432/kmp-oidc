@@ -1,8 +1,6 @@
 package io.github.zm.auth_core.storage
 
 import android.content.Context
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
 import io.github.zm.auth_core.token.TokenSet
 import kotlinx.serialization.json.Json
 
@@ -15,38 +13,25 @@ internal class AndroidEncryptedTokenStorage(
         encodeDefaults = true
     }
 
-    private val masterKey = MasterKey.Builder(context)
-        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-        .build()
-
-    private val preferences = EncryptedSharedPreferences.create(
-        context,
-        storageName,
-        masterKey,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+    private val secureStorage = AndroidEncryptedStringStorage(
+        context = context,
+        storageName = storageName
     )
 
     override suspend fun save(tokens: TokenSet) {
         val encoded = json.encodeToString(tokens)
-        preferences.edit()
-            .putString(KEY_TOKEN_SET, encoded)
-            .commit()
-
+        secureStorage.save(KEY_TOKEN_SET, encoded)
     }
 
     override suspend fun read(): TokenSet? {
-        val encoded = preferences.getString(KEY_TOKEN_SET, null)
+        val encoded = secureStorage.read(KEY_TOKEN_SET)
             ?: return null
 
         return json.decodeFromString<TokenSet>(encoded)
-
     }
 
     override suspend fun clear() {
-        preferences.edit()
-            .remove(KEY_TOKEN_SET)
-            .apply()
+        secureStorage.clear(KEY_TOKEN_SET)
     }
 
     private companion object {

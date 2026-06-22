@@ -1,6 +1,8 @@
 package io.github.zm.auth_core.session
 
-//Хранит данные, необходимые для продолжения Authorization Code Flow после возврата из браузера.
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class AuthSession(
     val state: String,
     val codeVerifier: String,
