@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.kotlin.serialization)
-    id("maven-publish")
+    id("com.vanniktech.maven.publish")
 }
 
 kotlin {
@@ -78,16 +78,34 @@ kotlin {
     }
 }
 
-group = providers.gradleProperty("GROUP").get()
-version = providers.gradleProperty("VERSION_NAME").get()
+mavenPublishing {
+    publishToMavenCentral()
 
-publishing {
-    publications.withType<MavenPublication>().configureEach {
-        val baseArtifactId = providers.gradleProperty("POM_ARTIFACT_ID").get()
-        artifactId = when (name) {
-            "kotlinMultiplatform" -> baseArtifactId
-            "android" -> "${baseArtifactId}-android"
-            else -> "${baseArtifactId}-${name}"
+    signAllPublications()
+
+    pom {
+        name.set("KMP OIDC")
+        description.set("OpenID Connect SDK for Kotlin Multiplatform")
+        url.set("https://github.com/Worker432/kmp-oidc")
+
+        licenses {
+            license {
+                name.set("Apache License 2.0")
+                url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+            }
+        }
+
+        developers {
+            developer {
+                id.set("Worker432")
+                name.set("Zahar Merkurev")
+            }
+        }
+
+        scm {
+            url.set("https://github.com/Worker432/kmp-oidc")
+            connection.set("scm:git:https://github.com/Worker432/kmp-oidc.git")
+            developerConnection.set("scm:git:ssh://git@github.com:Worker432/kmp-oidc.git")
         }
     }
 }

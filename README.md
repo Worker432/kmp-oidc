@@ -29,6 +29,12 @@ kmp-oidc is currently a pre-stable 0.2.0 release. It already supports a working 
 implementation("io.github.worker432:kmp-oidc:0.2.0")
 ```
 
+Android-only artifact:
+
+```kotlin
+implementation("io.github.worker432:kmp-oidc-android:0.2.0")
+```
+
 Current project properties:
 
 - group = io.github.worker432
@@ -61,15 +67,29 @@ Example:
 
 These values are client-specific. They do not come from discovery metadata.
 
-## Add The Dependency
+## Installation
 
-In your KMP module:
+### KMP Project
+
+Add the multiplatform artifact to commonMain:
 
 ```kotlin
 commonMain.dependencies {
     implementation("io.github.worker432:kmp-oidc:0.2.0")
 }
 ```
+
+### Android-only Project
+
+If you want to use the library in a regular Android application, use the Android artifact:
+
+```kotlin
+dependencies {
+    implementation("io.github.worker432:kmp-oidc-android:0.2.0")
+}
+```
+
+### Maven Local
 
 If you are consuming the library from mavenLocal() during development:
 
@@ -108,6 +128,20 @@ What these fields mean:
 - scopes: requested scopes
 - storageName: storage namespace for tokens
 
+## Full Integration Flow
+
+At a high level, client integration looks like this:
+
+1. Add the dependency
+2. Create AuthConfig
+3. Create PlatformDependencies
+4. Create AuthClient
+5. Register login and logout redirect URIs in your app
+6. Register the same redirect URIs in your OIDC provider
+7. Start login with login()
+8. Pass the callback URL back into the library on Android
+9. Ask the library for a valid access token when needed
+
 ## Create The Client
 
 ```kotlin
@@ -136,13 +170,13 @@ val platformDependencies = PlatformDependencies()
 
 ## Android Setup
 
-### 1. Internet Permission
+### Step 1. Add Internet Permission
 
 ```xml
 <uses-permission android:name="android.permission.INTERNET" />
 ```
 
-### 2. Register Redirect Intent Filters
+### Step 2. Register Redirect Intent Filters
 
 Your activity must be able to receive the login and logout callbacks.
 
@@ -177,7 +211,7 @@ These values must match:
 - redirectUri = "myapp://callback"
 - logoutRedirectUri = "myapp://logout"
 
-### 3. Handle Incoming Redirects
+### Step 3. Create The Activity Integration
 
 ```kotlin
 class MainActivity : ComponentActivity() {
@@ -185,6 +219,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        redirectUrl = intent?.dataString
 
         setContent {
             App(
@@ -204,7 +239,16 @@ class MainActivity : ComponentActivity() {
 }
 ```
 
-Then pass the redirect URL to the client:
+The important parts here:
+
+- use PlatformDependencies with context and activity
+- keep the latest redirect URL in state
+- read intent?.dataString in onCreate
+- update redirectUrl in onNewIntent
+
+### Step 4. Pass Redirects Into The Library
+
+In your Compose layer or screen logic:
 
 ```kotlin
 LaunchedEffect(redirectUrl) {
@@ -213,7 +257,33 @@ LaunchedEffect(redirectUrl) {
 }
 ```
 
-### 4. Cleartext HTTP For Local Development
+### Step 5. Start Login
+
+```kotlin
+scope.launch {
+    val result = authClient.login()
+}
+```
+
+On Android, login() usually returns AuthResult.Started because the browser flow continues outside the app. After the provider redirects back, call handleRedirect(url).
+
+### Step 6. Get A Valid Access Token
+
+```kotlin
+scope.launch {
+    when (val result = authClient.getValidAccessToken()) {
+        is TokenResult.Success -> {
+            val token = result.accessToken
+        }
+        TokenResult.NeedLogin -> {
+            authClient.login()
+        }
+        is TokenResult.Failure -> Unit
+    }
+}
+```
+
+### Step 7. Allow HTTP For Local Development If Needed
 
 If your local IdP runs on plain http, Android 9+ blocks cleartext traffic by default.
 
@@ -233,9 +303,9 @@ This is only for local development. Production should use https.
 
 ## iOS Setup
 
-### 1. Register The URL Scheme
+### Step 1. Register The URL Scheme
 
-Add your redirect scheme to Info.plist.
+Add your redirect scheme to Info.plist. If your redirectUri is myapp://callback and your logoutRedirectUri is myapp://logout, the scheme is just myapp.
 
 ```xml
 <key>CFBundleURLTypes</key>
@@ -249,31 +319,9 @@ Add your redirect scheme to Info.plist.
 </array>
 ```
 
-If your redirect URI is myapp://callback, the registered scheme must be myapp.
-
-### 2. Create PlatformDependencies
-
-```kotlin
-val platformDependencies = PlatformDependencies()
-```
-
-### 3. Redirect Handling On iOS
-
-The default iOS integration uses ASWebAuthenticationSession.
-
-That means:
-
-- the browser flow is opened by the library
-- the callback scheme is passed into ASWebAuthenticationSession
-- in the standard setup, login() may finish the redirect internally and return AuthResult.Success
-
-Because of that, iOS usually does not need the same manual redirect wiring as Android.
-
-### 4. HTTP Issuers For Local Development
+### Step 2. Allow HTTP For Local Development If Needed
 
 If your local IdP uses plain http, iOS may require App Transport Security exceptions during development.
-
-Example:
 
 ```xml
 <key>NSAppTransportSecurity</key>
@@ -284,6 +332,88 @@ Example:
 ```
 
 This is only for local development. Production should use https.
+
+### Step 3. Complete Example Info.plist
+
+This is what a minimal local-development setup can look like:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CADisableMinimumFrameDurationOnPhone</key>
+    <true/>
+
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <true/>
+    </dict>
+
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>myapp</string>
+            </array>
+        </dict>
+    </array>
+</dict>
+</plist>
+```
+
+### Step 4. Create PlatformDependencies
+
+```kotlin
+val platformDependencies = PlatformDependencies()
+```
+
+### Step 5. Create AuthClient
+
+```kotlin
+val authClient = AuthClientFactory.create(
+    config = config,
+    dependencies = PlatformDependencies()
+)
+```
+
+### Step 6. Start Login
+
+```kotlin
+scope.launch {
+    val result = authClient.login()
+}
+```
+
+### Step 7. Redirect Handling On iOS
+
+The default iOS integration uses ASWebAuthenticationSession, and this is the main difference from Android.
+
+That means:
+
+- the browser flow is opened by the library
+- the callback scheme is passed into ASWebAuthenticationSession
+- in the standard setup, login() may finish the redirect internally and return AuthResult.Success
+
+Because of that, iOS usually does not need the same manual redirect wiring as Android.
+
+### Step 8. Get A Valid Access Token
+
+```kotlin
+scope.launch {
+    when (val result = authClient.getValidAccessToken()) {
+        is TokenResult.Success -> {
+            val token = result.accessToken
+        }
+        TokenResult.NeedLogin -> {
+            authClient.login()
+        }
+        is TokenResult.Failure -> Unit
+    }
+}
+```
 
 ## Login
 
@@ -323,6 +453,26 @@ iOS:
 
 - in the standard ASWebAuthenticationSession path, the redirect is usually handled during login()
 - avoid manually passing the same redirect twice
+
+## Typical Client Setup
+
+This is the minimum shape of a client integration:
+
+```kotlin
+val authClient = AuthClientFactory.create(
+    config = AuthConfig(
+        clientId = "kmp-oidc-sdk",
+        issuer = "http://10.0.2.2:8080/realms/kmp",
+        redirectUri = "myapp://callback",
+        logoutRedirectUri = "myapp://logout",
+        scopes = listOf("openid", "profile", "email", "offline_access"),
+        storageName = "auth_tokens"
+    ),
+    dependencies = platformDependencies
+)
+```
+
+For Android emulator-based local development, 10.0.2.2 is the usual host alias for services running on the development machine.
 
 ## Get A Valid Access Token
 
