@@ -2,47 +2,90 @@
 
 Lightweight OpenID Connect (OIDC) authentication library for Kotlin Multiplatform.
 
-## Status
+kmp-oidc is currently a pre-stable 0.2.0 release. It already supports a working browser-based OIDC flow on Android and iOS, but the API may still change before 1.0.0.
 
-Version 0.2.0 is still pre-stable.
+## What Is Included
+
+- Authorization Code Flow with PKCE
+- OIDC discovery from /.well-known/openid-configuration
+- Authorization code exchange
+- Access token refresh
+- Local logout
+- Provider logout through end_session_endpoint
+- Android secure token storage
+- iOS Keychain token storage
+- Provider-specific request customization
+
+## Current Status
 
 - Android support is available
 - iOS support is available
-- API may still change before `1.0.0`
-
-## Features
-
-1. Authorization Code Flow with PKCE
-2. OpenID Connect Discovery
-3. Automatic access token refresh
-4. Secure token storage
-5. Browser-based authentication
-6. Local logout
-7. Provider logout through `end_session_endpoint`
-8. Identity Provider customization hooks
-9. Kotlin Multiplatform support
+- Keycloak is the only provider verified in this repository so far
+- Compose-specific helpers are not part of auth-core
 
 ## Coordinates
-
-Project coordinates for this release:
 
 ```kotlin
 implementation("io.github.worker432:kmp-oidc:0.2.0")
 ```
 
-This repository currently includes `maven-publish` configuration and can be verified locally with:
+Current project properties:
+
+- group = io.github.worker432
+- artifact = kmp-oidc
+- version = 0.2.0
+
+This repository already contains maven-publish configuration. For local verification:
 
 ```bash
 ./gradlew :auth-core:publishToMavenLocal
 ```
 
-If you publish the artifact to GitHub Packages or another Maven repository, use the same coordinates there.
+If you use publishToMavenLocal, add mavenLocal() to your repositories.
 
-## Configuration
+## Before You Start
+
+Before wiring the library into your app, make sure your OIDC client is configured at the provider side.
+
+You need:
+
+1. A registered OIDC client
+2. A valid clientId
+3. A registered login redirect URI
+4. A registered logout redirect URI if you want provider logout
+
+Example:
+
+- login redirect URI: myapp://callback
+- logout redirect URI: myapp://logout
+
+These values are client-specific. They do not come from discovery metadata.
+
+## Add The Dependency
+
+In your KMP module:
+
+```kotlin
+commonMain.dependencies {
+    implementation("io.github.worker432:kmp-oidc:0.2.0")
+}
+```
+
+If you are consuming the library from mavenLocal() during development:
+
+```kotlin
+repositories {
+    mavenLocal()
+    mavenCentral()
+    google()
+}
+```
+
+## Create The Config
 
 ```kotlin
 val config = AuthConfig(
-    clientId = "...",
+    clientId = "kmp-oidc-sdk",
     issuer = "https://issuer.example.com/realms/demo",
     redirectUri = "myapp://callback",
     logoutRedirectUri = "myapp://logout",
@@ -51,11 +94,21 @@ val config = AuthConfig(
         "profile",
         "email",
         "offline_access"
-    )
+    ),
+    storageName = "auth_tokens"
 )
 ```
 
-## Create AuthClient
+What these fields mean:
+
+- issuer: base URL of your OIDC provider
+- clientId: registered OAuth/OIDC client id
+- redirectUri: where the provider returns the user after login
+- logoutRedirectUri: where the provider returns the user after provider logout
+- scopes: requested scopes
+- storageName: storage namespace for tokens
+
+## Create The Client
 
 ```kotlin
 val authClient = AuthClientFactory.create(
@@ -64,7 +117,7 @@ val authClient = AuthClientFactory.create(
 )
 ```
 
-### PlatformDependencies
+PlatformDependencies is platform-specific.
 
 Android:
 
@@ -81,58 +134,215 @@ iOS:
 val platformDependencies = PlatformDependencies()
 ```
 
-## Login
+## Android Setup
 
-Start the authorization flow:
+### 1. Internet Permission
+
+```xml
+<uses-permission android:name="android.permission.INTERNET" />
+```
+
+### 2. Register Redirect Intent Filters
+
+Your activity must be able to receive the login and logout callbacks.
+
+```xml
+<activity
+    android:name=".MainActivity"
+    android:exported="true"
+    android:launchMode="singleTask">
+
+    <intent-filter>
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data
+            android:scheme="myapp"
+            android:host="callback" />
+    </intent-filter>
+
+    <intent-filter>
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data
+            android:scheme="myapp"
+            android:host="logout" />
+    </intent-filter>
+</activity>
+```
+
+These values must match:
+
+- redirectUri = "myapp://callback"
+- logoutRedirectUri = "myapp://logout"
+
+### 3. Handle Incoming Redirects
+
+```kotlin
+class MainActivity : ComponentActivity() {
+    private var redirectUrl by mutableStateOf<String?>(null)
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        setContent {
+            App(
+                dependencies = PlatformDependencies(
+                    context = applicationContext,
+                    activity = this
+                ),
+                redirectUrl = redirectUrl
+            )
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        redirectUrl = intent.dataString
+    }
+}
+```
+
+Then pass the redirect URL to the client:
+
+```kotlin
+LaunchedEffect(redirectUrl) {
+    val url = redirectUrl ?: return@LaunchedEffect
+    authClient.handleRedirect(url)
+}
+```
+
+### 4. Cleartext HTTP For Local Development
+
+If your local IdP runs on plain http, Android 9+ blocks cleartext traffic by default.
+
+For emulator-based local development, either:
+
+- use https
+- or explicitly allow cleartext traffic for development only
+
+Example:
+
+```xml
+<application
+    android:usesCleartextTraffic="true" />
+```
+
+This is only for local development. Production should use https.
+
+## iOS Setup
+
+### 1. Register The URL Scheme
+
+Add your redirect scheme to Info.plist.
+
+```xml
+<key>CFBundleURLTypes</key>
+<array>
+    <dict>
+        <key>CFBundleURLSchemes</key>
+        <array>
+            <string>myapp</string>
+        </array>
+    </dict>
+</array>
+```
+
+If your redirect URI is myapp://callback, the registered scheme must be myapp.
+
+### 2. Create PlatformDependencies
+
+```kotlin
+val platformDependencies = PlatformDependencies()
+```
+
+### 3. Redirect Handling On iOS
+
+The default iOS integration uses ASWebAuthenticationSession.
+
+That means:
+
+- the browser flow is opened by the library
+- the callback scheme is passed into ASWebAuthenticationSession
+- in the standard setup, login() may finish the redirect internally and return AuthResult.Success
+
+Because of that, iOS usually does not need the same manual redirect wiring as Android.
+
+### 4. HTTP Issuers For Local Development
+
+If your local IdP uses plain http, iOS may require App Transport Security exceptions during development.
+
+Example:
+
+```xml
+<key>NSAppTransportSecurity</key>
+<dict>
+    <key>NSAllowsArbitraryLoads</key>
+    <true/>
+</dict>
+```
+
+This is only for local development. Production should use https.
+
+## Login
 
 ```kotlin
 when (val result = authClient.login()) {
     AuthResult.Started -> {
-        // Typical Android path: browser opened, redirect will be delivered later.
+        // Typical Android path:
+        // browser opened and redirect will be delivered later.
     }
+
     AuthResult.Success -> {
-        // Typical iOS path: ASWebAuthenticationSession completed and tokens are already stored.
+        // Typical iOS path:
+        // ASWebAuthenticationSession completed and tokens are already stored.
     }
+
     AuthResult.AccessDenied -> {
-        // Provider returned access_denied.
+        // Provider returned access_denied
     }
-    is AuthResult.Failure -> {
-        // Handle transport / redirect / token errors.
-    }
+
     AuthResult.Cancelled -> Unit
+
+    is AuthResult.Failure -> {
+        // Redirect, discovery, browser, storage, or token error
+    }
 }
 ```
 
-The library opens the system browser and sends the user to your OIDC provider.
-
 ## Handle Redirect
 
-On Android, pass the redirect URI back to the library after it returns to your activity:
+Android:
 
 ```kotlin
 authClient.handleRedirect(redirectUrl)
 ```
 
-On iOS, login may finish the redirect inside ASWebAuthenticationSession.
-If your app also forwards incoming URLs by hand, make sure the same redirect is not passed twice.
+iOS:
 
-## Get Access Token
+- in the standard ASWebAuthenticationSession path, the redirect is usually handled during login()
+- avoid manually passing the same redirect twice
+
+## Get A Valid Access Token
 
 ```kotlin
 when (val result = authClient.getValidAccessToken()) {
     is TokenResult.Success -> {
         val accessToken = result.accessToken
     }
+
     TokenResult.NeedLogin -> {
         authClient.login()
     }
+
     is TokenResult.Failure -> {
-        // Handle refresh/storage failures.
+        // Refresh or storage failure
     }
 }
 ```
 
-If the access token has expired and a refresh token is available, the library will try to refresh it automatically.
+If the access token is expired and a refresh token is available, the library tries to refresh it automatically.
 
 ## Logout
 
@@ -142,19 +352,21 @@ Local logout:
 authClient.logout(LogoutMode.LOCAL_ONLY)
 ```
 
-Logout from the Identity Provider:
+Provider logout:
 
 ```kotlin
 authClient.logout(LogoutMode.LOCAL_AND_PROVIDER)
 ```
 
+Provider logout uses end_session_endpoint when it is available in discovery metadata.
+
 ## Identity Provider Customization
 
-If your provider needs extra query or form parameters, add them through IdpCustomization.
+If your provider needs extra query or form parameters, use IdpCustomization.
 
 ```kotlin
 val config = AuthConfig(
-    clientId = "...",
+    clientId = "client-id",
     issuer = "https://issuer.example.com/realms/demo",
     redirectUri = "myapp://callback",
     logoutRedirectUri = "myapp://logout",
@@ -170,29 +382,40 @@ val config = AuthConfig(
 
 This is useful for providers that expect extra parameters in authorize, token, or logout requests.
 
-## Identity Providers
+## Supported Identity Providers
 
 Current compatibility status:
 
 | Provider | Status | Notes |
 | --- | --- | --- |
 | Keycloak | Tested | Verified in the sample app on Android and iOS |
-| Other OIDC providers | Not verified yet | The library is built around standard OIDC flows, but they have not been tested in this repository yet |
+| Other OIDC providers | Not verified yet | The library follows standard OIDC flows, but they have not been verified in this repository yet |
+
+## Public API
+
+```kotlin
+interface AuthClient {
+    suspend fun login(): AuthResult
+    suspend fun handleRedirect(url: String): AuthResult
+    suspend fun getValidAccessToken(): TokenResult
+    suspend fun logout(mode: LogoutMode = LogoutMode.LOCAL_ONLY): AuthResult
+}
+```
 
 ## Current Limitations
 
-- API is still pre-`1.0.0`
+- API is still pre-1.0.0
 - Only Keycloak has been verified in this repository so far
-- Local development on iOS may still require extra setup for HTTP issuers
-- Compose-specific state helpers are not part of `auth-core`
+- Compose-specific state helpers are not part of auth-core
+- Local HTTP development still requires platform-specific setup
 - Maven Central publication is not configured yet
 
 ## Roadmap
 
-- More automated tests around token refresh and logout flows
-- Better redirect lifecycle guidance for iOS consumers
-- Hardened error mapping for more provider-specific OAuth/OIDC errors
-- Optional Compose-friendly auth state in a separate module, without adding Compose to `auth-core`
+- More automated tests around refresh and logout flows
+- Better redirect lifecycle guidance for consumers
+- More provider-specific OAuth/OIDC error mapping
+- Optional Compose-friendly auth state in a separate module
 - Maven Central publication
 - Additional sample apps and integration docs
 
